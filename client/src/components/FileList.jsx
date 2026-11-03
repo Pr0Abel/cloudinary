@@ -11,25 +11,27 @@ import { toast } from 'react-toastify';
  * @returns {JSX.Element}
  */
 export default function FileList({ title, endpoint, refreshKey, imageOnly }) {
-const [files, setFiles] = useState([]);
+	const [files, setFiles] = useState([]);
 
-useEffect(() => {
-  fetch(endpoint)
-    .then(console.log)
-    .catch(console.warn)
-}, [endpoint]);
+	useEffect(() => {
+		fetch(endpoint)
+			.then(res => res.json())
+			.then(res => {
+				console.log(`Fetched files from ${endpoint}:`, res);
+				setFiles(res.list)
+			})
+			.catch(console.warn)
+	}, [endpoint]);
 
-  return (
-    <section className="card">
-      <h2>{title}</h2>
-      <ul className="file-list">
-        {files.map((file) => (
-          <li key={file.name}>
-            {file}
-          </li>
-        ))}
-
-      </ul>
-    </section>
-  );
+	return (
+		<section className="card">
+			<h2>{title}</h2>
+			<ul className="file-list">
+				{files.map((file) => <li key={file}>
+					{/* clickable links show content */}
+					{file.name}
+				</li>)}
+			</ul>
+		</section>
+	);
 }
