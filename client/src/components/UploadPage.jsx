@@ -13,25 +13,29 @@ const API = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 export default function UploadPage() {
 
 
-  return (
-    <main className="page">
-      <h1>File Upload</h1>
-      <div className="columns">
-        <div className="column">
-          <FileUpload
+	return (
+		<main className="page">
+			<h1>File Upload</h1>
+			<div className="columns">
+				<div className="column">
+					<FileUpload
+						title="Upload to FTP"
+						icon={<FaServer />}
+						endpoint='http://localhost:5000/api/upload/ftp'
+					/>
+					<FileList title='FTP files' endpoint='http://localhost:5000/api/files/ftp' />
+				</div>
+				<div className="column">
+					<FileUpload
+						title="Upload to Cloudinary"
+						icon={<FaCloud />}
+						endpoint='http://localhost:5000/api/upload/cloudinary'
+					/>
+					<FileList
 
-          />
-          <FileList  />
-        </div>
-        <div className="column">
-          <FileUpload
-
-          />
-          <FileList
-
-          />
-        </div>
-      </div>
-    </main>
-  );
+					/>
+				</div>
+			</div>
+		</main>
+	);
 }

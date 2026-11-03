@@ -24,8 +24,8 @@ const app = express();
 
 // Multer middleware config: keep files in memory (req.file.buffer), cap size at 10 MB
 const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
+	storage: multer.memoryStorage(),
+	limits: { fileSize: 10 * 1024 * 1024 },
 });
 
 // Global middleware: only allow requests from the configured client origin
@@ -33,9 +33,9 @@ app.use(cors({ origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173' }));
 
 // Credentials come from environment variables, never hard-coded
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
+	cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+	api_key: process.env.CLOUDINARY_API_KEY,
+	api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
 /**
@@ -45,8 +45,29 @@ cloudinary.config({
  * Responds with { message, name }.
  */
 app.post('/api/upload/ftp', upload.single('file'), async (req, res) => {
-   return res.status(400).json({ error: 'No file provided' });
+	console.log(req.body, req.file);
+	if (!req.file) {
+		return res.status(400).json({ error: 'No file provided' });
+	}
 
+	const ftpClient = new Client();
+	try {
+		await ftpClient.access({
+			host: '192.168.56.1',
+			port: 21,
+			user: 'tester',
+			password: 'password',
+		})
+
+		//ftpClient.ftp.verbose = true
+		//await ftpClient.ensureDir('/')
+		await ftpClient.uploadFrom(Readable.from(req.file.buffer), path.basename(req.file.originalname))
+		await ftpClient.close()
+		return res.status(200).json({ message: 'File uploaded to FTP', name: req.file.originalname });
+	} catch (err) {
+		console.warn(err)
+		return res.status(500).json({ error: 'FTP upload failed: ' + err.message });
+	}
 });
 
 /**
@@ -54,7 +75,7 @@ app.post('/api/upload/ftp', upload.single('file'), async (req, res) => {
  * Accepts images only; responds with { message, url }.
  */
 app.post('/api/upload/cloudinary', upload.single('file'), async (req, res) => {
-   return res.status(400).json({ error: 'No file provided' });
+	return res.status(400).json({ error: 'No file provided' });
 
 });
 
@@ -64,38 +85,50 @@ app.post('/api/upload/cloudinary', upload.single('file'), async (req, res) => {
  * @returns {Promise<import('basic-ftp').FTPResponse>}
  */
 const ftpAccess = (client) =>
-  client.access({
-    host: process.env.FTP_HOST || 'localhost',
-    port: Number(process.env.FTP_PORT) || 21,
-    user: process.env.FTP_USER || 'anonymous',
-    password: process.env.FTP_PASSWORD || '',
-    secure: process.env.FTP_SECURE === 'true',
-  });
+	client.access({
+		host: process.env.FTP_HOST || 'localhost',
+		port: Number(process.env.FTP_PORT) || 21,
+		user: process.env.FTP_USER || 'anonymous',
+		password: process.env.FTP_PASSWORD || '',
+		secure: process.env.FTP_SECURE === 'true',
+	});
 
 /** GET /api/files/ftp - lists files in the FTP remote dir as [{ name, size }]. */
 app.get('/api/files/ftp', async (_req, res) => {
-
-    res.status(500).json({ error: 'FTP list failed: '  });
-
+	const client = new Client() 
+		await client.access({
+		host: '192.168.56.1', 
+		port: 21,
+		user: 'tester',
+		password: 'password',
+		secure: 'true'
+	})
+	const list = await client.list()
+	if (list) {
+		await client.close()
+	res.status(200).json({ list })
+	} else {
+		res.status(500).json({ error: 'FTP list failed: ' });
+	}
 });
 
 /** GET /api/files/ftp/:name - streams one FTP file to the response as a download. */
 app.get('/api/files/ftp/:name', async (req, res) => {
- res.status(404).json({ error: 'FTP download failed: '  });
+	res.status(404).json({ error: 'FTP download failed: ' });
 
 });
 
 /** GET /api/files/cloudinary - lists up to 30 images as [{ name, url }]. */
 app.get('/api/files/cloudinary', async (_req, res) => {
 
-    res.status(500).json({ error: 'Cloudinary list failed: '  });
+	res.status(500).json({ error: 'Cloudinary list failed: ' });
 
 });
 
 // Error-handling middleware (4 args, registered last): turns multer errors
 // (e.g. file too large) into 400 and anything else into 500.
 app.use((err, _req, res, _next) => {
-  res.status(err instanceof multer.MulterError ? 400 : 500).json({ error: err.message });
+	res.status(err instanceof multer.MulterError ? 400 : 500).json({ error: err.message });
 });
 
 const port = process.env.PORT || 5000;
