@@ -75,8 +75,17 @@ app.post('/api/upload/ftp', upload.single('file'), async (req, res) => {
  * Accepts images only; responds with { message, url }.
  */
 app.post('/api/upload/cloudinary', upload.single('file'), async (req, res) => {
-	return res.status(400).json({ error: 'No file provided' });
+	if(!req.file) return res.status(400).json({ error: 'No file provided' });
+	if(!req.file.mimetype.startsWith('image/')) return res.status(400).json({ error: 'Only images!' });
 
+	const dataUri = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+	cloudinary.uploader.upload(dataUri, { resource_type: 'image' },
+		 (err, result) => {
+			console.log(err, result);
+
+			return res.status(err ? 500 : 201).json(err, result)
+		 }
+	)
 });
 
 /**
